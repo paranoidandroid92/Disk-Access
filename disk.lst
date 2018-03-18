@@ -1,0 +1,88 @@
+     1                                  [BITS 16]
+     2 00000000 B8C007                  mov ax,0x07c0
+     3 00000003 8ED8                    mov ds,ax
+     4                                  
+     5 00000005 B80060                  mov ax,0x6000
+     6 00000008 8ED0                    mov ss,ax
+     7 0000000A BC0000                  mov sp,0
+     8                                  
+     9 0000000D 8816[A100]              mov [drive_index],dl
+    10                                  
+    11                                  
+    12                                  
+    13                                  end:
+    14 00000011 E80300                  	call check_bios_extension
+    15 00000014 F4                      	hlt
+    16 00000015 EBFA                    	jmp end
+    17                                  
+    18                                  check_bios_extension:
+    19 00000017 60                      	pusha
+    20 00000018 B441                    	mov ah,0x41
+    21 0000001A 8A16[A100]              	mov dl,[drive_index]
+    22 0000001E BBAA55                  	mov bx,0x55AA
+    23 00000021 CD13                    	int 0x13
+    24 00000023 7200                    	jc ext_present
+    25                                  ext_present:
+    26 00000025 BE[7500]                	mov si,ext_present_str
+    27 00000028 EB05                    	jmp ext_end
+    28                                  ext_not_present:
+    29 0000002A BE[8700]                	mov si,ext_not_present_str
+    30 0000002D EB00                    	jmp ext_end
+    31                                  ext_end:
+    32 0000002F E80200                  	call printStr
+    33 00000032 61                      	popa
+    34 00000033 C3                      	ret
+    35                                  	
+    36                                  
+    37                                  
+    38                                  ;prints string in [ds:si] to screen	
+    39                                  printStr:
+    40 00000034 60                      	pusha;
+    41 00000035 57                      	push di
+    42 00000036 06                      	push es
+    43 00000037 FC                      	cld;inc si after lodsb
+    44                                  loadchr:
+    45 00000038 AC                      	lodsb;
+    46 00000039 3C00                    	cmp al,0x00;
+    47 0000003B 7434                    	je printStrFinish;
+    48 0000003D 3C0A                    	cmp al,0x0A;
+    49 0000003F 7415                    	je newline;
+    50 00000041 B44E                    	mov ah,0x4e;
+    51 00000043 8B3E[9F00]              	mov di,[video_memory_index];
+    52 00000047 8E06[9D00]              	mov es,[video_memory_base];
+    53 0000004B 268905                  	mov [es:di],ax;
+    54 0000004E 47                      	inc di;
+    55 0000004F 47                      	inc di;
+    56 00000050 893E[9F00]              	mov [video_memory_index],di;
+    57 00000054 EBE2                    	jmp loadchr;
+    58                                  newline:
+    59 00000056 52                      	push dx;
+    60 00000057 53                      	push bx;
+    61 00000058 50                      	push ax;
+    62 00000059 BBA000                  	mov bx,0x00A0;
+    63 0000005C 011E[9F00]              	add [video_memory_index],bx;
+    64 00000060 BA0000                  	mov dx,0;
+    65 00000063 A1[9F00]                	mov ax,[video_memory_index];
+    66 00000066 F7F3                    	div bx;
+    67 00000068 2916[9F00]              	sub [video_memory_index],dx;
+    68 0000006C 58                      	pop ax;
+    69 0000006D 5B                      	pop bx;
+    70 0000006E 5A                      	pop dx;
+    71 0000006F EBC7                    	jmp loadchr;
+    72                                  printStrFinish:
+    73 00000071 07                      	pop es
+    74 00000072 5F                      	pop di
+    75 00000073 61                      	popa;
+    76 00000074 C3                      	ret;
+    77                                  
+    78 00000075 457874656E73696F6E-     ext_present_str db 'Extension present',0x00
+    79 0000007E 2070726573656E7400 
+    80 00000087 457874656E73696F6E-     ext_not_present_str db 'Extension not present',0x00
+    81 00000090 206E6F742070726573-
+    82 00000099 656E7400           
+    83 0000009D 00B8                    video_memory_base dw 0xb800
+    84 0000009F 0000                    video_memory_index dw 0x0000
+    85 000000A1 00                      drive_index db 0x00
+    86 000000A2 00<rept>                times 510-($-$$) db 0x00
+    87 000001FE 55                      db 0x55
+    88 000001FF AA                      db 0xAA
