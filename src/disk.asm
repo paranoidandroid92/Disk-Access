@@ -8,16 +8,21 @@ mov sp,0
 
 mov [drive_index],dl
 
-
+call check_bios_extension
+mov ax,0
+mov es,ax
+mov di,0x7e00 ; read first sector of disk at 0000:7e00
+mov ax,0
+mov bx,1
+call read_sector
+mov ax,0
+mov es,ax
+mov di,0x7e00 ; write a sector from 0000:7e00 to sector 1
+mov ax,1
+mov bx,1
+call write_sector
 
 end:
-	call check_bios_extension
-	mov ax,0
-	mov es,ax
-	mov di,0x7e00
-	mov ax,0
-	mov bx,1
-	call read_sector
 	hlt
 	jmp end
 
@@ -38,12 +43,11 @@ ext_end:
 	popa
 	ret
 
-;es:di => read location
+;es:di => location to transfer sectors
 ;ax    => number of first sector
 ;bx    => number of sectors to be read
 read_sector:
 	pusha
-	push es
 	mov [dap_num_of_secs],bx
 	mov [dap_seg_addr],es
 	mov [dap_off_addr],di
@@ -60,7 +64,30 @@ read_fail:
 	mov si,read_fail_str
 read_end:
 	call printStr
-	pop es
+	popa
+	ret
+
+;es:di => location to transfer sectors
+;ax    => number of first sector
+;bx    => number of sectors to be written
+write_sector:
+	pusha
+	mov [dap_num_of_secs],bx
+	mov [dap_seg_addr],es
+	mov [dap_off_addr],di
+	mov [dap_start_sec],ax
+	mov ah,0x43
+	mov dl,[drive_index]
+	mov si,disk_access_packet
+	int 0x13
+	jc write_fail
+write_succesful:
+	mov si,write_succesful_str
+	jmp write_end
+write_fail:
+	mov si,write_fail_str
+write_end:
+	call printStr
 	popa
 	ret
 
@@ -104,16 +131,19 @@ printStrFinish:
 	popa;
 	ret;
 
+
 ext_present_str db 'Extension present', 0x0A, 0x00
 ext_not_present_str db 'Extension not present', 0x0A, 0x00
 read_succesful_str db 'Read succesful', 0x0A, 0x00
 read_fail_str db 'Read failed', 0x0A, 0x00
+write_succesful_str db 'Write succesful', 0x0A, 0x00
+write_fail_str db 'Write failed', 0x0A, 0x00
 video_memory_base dw 0xb800
 video_memory_index dw 0
 drive_index db 0
 disk_access_packet:
-	dap_size 		db 0x10
-			 		db 0
+	dap_size		db 0x10
+					db 0
 	dap_num_of_secs dw 0x0000
 	dap_off_addr	dw 0
 	dap_seg_addr	dw 0
@@ -121,3 +151,4 @@ disk_access_packet:
 times 510-($-$$) db 0x00
 db 0x55
 db 0xAA
+times 1024-($-$$) db 0x00
