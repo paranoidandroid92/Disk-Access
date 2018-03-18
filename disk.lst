@@ -6,83 +6,124 @@
      6 00000008 8ED0                    mov ss,ax
      7 0000000A BC0000                  mov sp,0
      8                                  
-     9 0000000D 8816[A100]              mov [drive_index],dl
+     9 0000000D 8816[FB00]              mov [drive_index],dl
     10                                  
     11                                  
     12                                  
     13                                  end:
-    14 00000011 E80300                  	call check_bios_extension
-    15 00000014 F4                      	hlt
-    16 00000015 EBFA                    	jmp end
-    17                                  
-    18                                  check_bios_extension:
-    19 00000017 60                      	pusha
-    20 00000018 B441                    	mov ah,0x41
-    21 0000001A 8A16[A100]              	mov dl,[drive_index]
-    22 0000001E BBAA55                  	mov bx,0x55AA
-    23 00000021 CD13                    	int 0x13
-    24 00000023 7200                    	jc ext_present
-    25                                  ext_present:
-    26 00000025 BE[7500]                	mov si,ext_present_str
-    27 00000028 EB05                    	jmp ext_end
-    28                                  ext_not_present:
-    29 0000002A BE[8700]                	mov si,ext_not_present_str
-    30 0000002D EB00                    	jmp ext_end
-    31                                  ext_end:
-    32 0000002F E80200                  	call printStr
-    33 00000032 61                      	popa
-    34 00000033 C3                      	ret
-    35                                  	
-    36                                  
-    37                                  
-    38                                  ;prints string in [ds:si] to screen	
-    39                                  printStr:
-    40 00000034 60                      	pusha;
-    41 00000035 57                      	push di
-    42 00000036 06                      	push es
-    43 00000037 FC                      	cld;inc si after lodsb
-    44                                  loadchr:
-    45 00000038 AC                      	lodsb;
-    46 00000039 3C00                    	cmp al,0x00;
-    47 0000003B 7434                    	je printStrFinish;
-    48 0000003D 3C0A                    	cmp al,0x0A;
-    49 0000003F 7415                    	je newline;
-    50 00000041 B44E                    	mov ah,0x4e;
-    51 00000043 8B3E[9F00]              	mov di,[video_memory_index];
-    52 00000047 8E06[9D00]              	mov es,[video_memory_base];
-    53 0000004B 268905                  	mov [es:di],ax;
-    54 0000004E 47                      	inc di;
-    55 0000004F 47                      	inc di;
-    56 00000050 893E[9F00]              	mov [video_memory_index],di;
-    57 00000054 EBE2                    	jmp loadchr;
-    58                                  newline:
-    59 00000056 52                      	push dx;
-    60 00000057 53                      	push bx;
-    61 00000058 50                      	push ax;
-    62 00000059 BBA000                  	mov bx,0x00A0;
-    63 0000005C 011E[9F00]              	add [video_memory_index],bx;
-    64 00000060 BA0000                  	mov dx,0;
-    65 00000063 A1[9F00]                	mov ax,[video_memory_index];
-    66 00000066 F7F3                    	div bx;
-    67 00000068 2916[9F00]              	sub [video_memory_index],dx;
-    68 0000006C 58                      	pop ax;
-    69 0000006D 5B                      	pop bx;
-    70 0000006E 5A                      	pop dx;
-    71 0000006F EBC7                    	jmp loadchr;
-    72                                  printStrFinish:
-    73 00000071 07                      	pop es
-    74 00000072 5F                      	pop di
-    75 00000073 61                      	popa;
-    76 00000074 C3                      	ret;
-    77                                  
-    78 00000075 457874656E73696F6E-     ext_present_str db 'Extension present',0x00
-    79 0000007E 2070726573656E7400 
-    80 00000087 457874656E73696F6E-     ext_not_present_str db 'Extension not present',0x00
-    81 00000090 206E6F742070726573-
-    82 00000099 656E7400           
-    83 0000009D 00B8                    video_memory_base dw 0xb800
-    84 0000009F 0000                    video_memory_index dw 0x0000
-    85 000000A1 00                      drive_index db 0x00
-    86 000000A2 00<rept>                times 510-($-$$) db 0x00
-    87 000001FE 55                      db 0x55
-    88 000001FF AA                      db 0xAA
+    14 00000011 E81400                  	call check_bios_extension
+    15 00000014 B80000                  	mov ax,0
+    16 00000017 8EC0                    	mov es,ax
+    17 00000019 BF007E                  	mov di,0x7e00
+    18 0000001C B80000                  	mov ax,0
+    19 0000001F BB0100                  	mov bx,1
+    20 00000022 E81E00                  	call read_sector
+    21 00000025 F4                      	hlt
+    22 00000026 EBE9                    	jmp end
+    23                                  
+    24                                  check_bios_extension:
+    25 00000028 60                      	pusha
+    26 00000029 B441                    	mov ah,0x41
+    27 0000002B 8A16[FB00]              	mov dl,[drive_index]
+    28 0000002F BBAA55                  	mov bx,0x55AA
+    29 00000032 CD13                    	int 0x13
+    30 00000034 7205                    	jc ext_not_present
+    31                                  ext_present:
+    32 00000036 BE[B000]                	mov si,ext_present_str
+    33 00000039 EB03                    	jmp ext_end
+    34                                  ext_not_present:
+    35 0000003B BE[C300]                	mov si,ext_not_present_str
+    36                                  ext_end:
+    37 0000003E E82E00                  	call printStr
+    38 00000041 61                      	popa
+    39 00000042 C3                      	ret
+    40                                  
+    41                                  ;es:di => read location
+    42                                  ;ax    => number of first sector
+    43                                  ;bx    => number of sectors to be read
+    44                                  read_sector:
+    45 00000043 60                      	pusha
+    46 00000044 06                      	push es
+    47 00000045 891E[FE00]              	mov [dap_num_of_secs],bx
+    48 00000049 8C06[0201]              	mov [dap_seg_addr],es
+    49 0000004D 893E[0001]              	mov [dap_off_addr],di
+    50 00000051 A3[0401]                	mov [dap_start_sec],ax
+    51 00000054 B442                    	mov ah,0x42
+    52 00000056 8A16[FB00]              	mov dl,[drive_index]
+    53 0000005A BE[FC00]                	mov si,disk_access_packet
+    54 0000005D CD13                    	int 0x13
+    55 0000005F 7205                    	jc read_fail
+    56                                  read_succesful:
+    57 00000061 BE[DA00]                	mov si,read_succesful_str
+    58 00000064 EB03                    	jmp read_end
+    59                                  read_fail:
+    60 00000066 BE[EA00]                	mov si,read_fail_str
+    61                                  read_end:
+    62 00000069 E80300                  	call printStr
+    63 0000006C 07                      	pop es
+    64 0000006D 61                      	popa
+    65 0000006E C3                      	ret
+    66                                  
+    67                                  ;prints string in [ds:si] to screen	
+    68                                  printStr:
+    69 0000006F 60                      	pusha;
+    70 00000070 57                      	push di
+    71 00000071 06                      	push es
+    72 00000072 FC                      	cld;inc si after lodsb
+    73                                  loadchr:
+    74 00000073 AC                      	lodsb;
+    75 00000074 3C00                    	cmp al,0x00;
+    76 00000076 7434                    	je printStrFinish;
+    77 00000078 3C0A                    	cmp al,0x0A;
+    78 0000007A 7415                    	je newline;
+    79 0000007C B44E                    	mov ah,0x4e;
+    80 0000007E 8B3E[F900]              	mov di,[video_memory_index];
+    81 00000082 8E06[F700]              	mov es,[video_memory_base];
+    82 00000086 268905                  	mov [es:di],ax;
+    83 00000089 47                      	inc di;
+    84 0000008A 47                      	inc di;
+    85 0000008B 893E[F900]              	mov [video_memory_index],di;
+    86 0000008F EBE2                    	jmp loadchr;
+    87                                  newline:
+    88 00000091 52                      	push dx;
+    89 00000092 53                      	push bx;
+    90 00000093 50                      	push ax;
+    91 00000094 BBA000                  	mov bx,0x00A0;
+    92 00000097 011E[F900]              	add [video_memory_index],bx;
+    93 0000009B BA0000                  	mov dx,0;
+    94 0000009E A1[F900]                	mov ax,[video_memory_index];
+    95 000000A1 F7F3                    	div bx;
+    96 000000A3 2916[F900]              	sub [video_memory_index],dx;
+    97 000000A7 58                      	pop ax;
+    98 000000A8 5B                      	pop bx;
+    99 000000A9 5A                      	pop dx;
+   100 000000AA EBC7                    	jmp loadchr;
+   101                                  printStrFinish:
+   102 000000AC 07                      	pop es
+   103 000000AD 5F                      	pop di
+   104 000000AE 61                      	popa;
+   105 000000AF C3                      	ret;
+   106                                  
+   107 000000B0 457874656E73696F6E-     ext_present_str db 'Extension present', 0x0A, 0x00
+   108 000000B9 2070726573656E740A-
+   109 000000C2 00                 
+   110 000000C3 457874656E73696F6E-     ext_not_present_str db 'Extension not present', 0x0A, 0x00
+   111 000000CC 206E6F742070726573-
+   112 000000D5 656E740A00         
+   113 000000DA 526561642073756363-     read_succesful_str db 'Read succesful', 0x0A, 0x00
+   114 000000E3 657366756C0A00     
+   115 000000EA 52656164206661696C-     read_fail_str db 'Read failed', 0x0A, 0x00
+   116 000000F3 65640A00           
+   117 000000F7 00B8                    video_memory_base dw 0xb800
+   118 000000F9 0000                    video_memory_index dw 0
+   119 000000FB 00                      drive_index db 0
+   120                                  disk_access_packet:
+   121 000000FC 10                      	dap_size 		db 0x10
+   122 000000FD 00                      			 		db 0
+   123 000000FE 0000                    	dap_num_of_secs dw 0x0000
+   124 00000100 0000                    	dap_off_addr	dw 0
+   125 00000102 0000                    	dap_seg_addr	dw 0
+   126 00000104 0000000000000000        	dap_start_sec	dq 0
+   127 0000010C 00<rept>                times 510-($-$$) db 0x00
+   128 000001FE 55                      db 0x55
+   129 000001FF AA                      db 0xAA
