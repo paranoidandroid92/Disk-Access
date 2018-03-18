@@ -5,7 +5,7 @@ src="$folder/src"
 bin="$folder/bin"
 cd "$folder"
 nasm -f bin "$src/disk.asm" -l disk.lst -o "$bin/disk"
-sudo dd if="$bin/disk" of="$bochsFolder/test.iso" bs=512 count=1 | hexdump -C
+sudo dd if="$bin/disk" of="$bochsFolder/test.iso" bs=512 count=2 | hexdump -C
 sudo chmod u=rwx,g=rwx,o=rwx "$bochsFolder/test.iso"
 cd "$bochsFolder"
 bochs
